@@ -1,0 +1,22 @@
+<?
+
+/*
+Configure this to your SMTP settings
+*/
+$config = array(
+  'smtp'=>array(
+    'host'=>'',
+    'port'=>25,
+    'username'=>'',
+    'password'=>'',
+  ),
+  'debug'=>false,
+  'debug_email'=>'',
+  'from'=>array('wicked@benallfree.com'=>'Wicked'),
+  'bcc'=>array(),
+  'use_php_mail'=>true,
+  'send_immediately'=>true,
+  'requires'=>array(
+    'class_lazyloader',
+  ),
+);

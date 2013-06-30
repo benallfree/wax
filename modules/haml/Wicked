@@ -1,0 +1,13 @@
+<?
+
+$config = array(
+  'requires'=>array(
+    'string',
+    'sass',
+    'class_lazyloader',
+    'php_sandbox',
+    'path_utils',
+    'presentation',
+  ),
+  'always_generate'=>false,
+);

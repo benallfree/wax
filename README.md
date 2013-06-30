@@ -1,0 +1,1 @@
+Wicked on WordPress (WoW) is a distribution of the most popular Wicked modules made for WordPress (or, at least, which work with WordPress). This distribution is designed to be included and distributed with your plugin and takes care not to conflict with other versions of WoW that may be running with other plugins that rely on WoW.

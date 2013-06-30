@@ -1,0 +1,6 @@
+<?
+
+class RedirectException extends Exception
+{
+}
+  
