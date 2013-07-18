@@ -34,7 +34,7 @@ class RequestMixin extends Mixin
     
     if (strpos($subdomain, '_')) trigger_error("Subdomains with _ are not supported. They break sessions in IE7/8, possibly others.", E_USER_ERROR);
     
-    $request = W::filter('parse_request', array(
+    $request = apply_filters('wax_parse_request', array(
       'domain'=>$domain,
       'subdomain'=>$subdomain,
       'host'=>$host,

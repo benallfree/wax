@@ -1,4 +1,4 @@
-<?
+<?php
 
 class StringMixin extends Mixin
 {

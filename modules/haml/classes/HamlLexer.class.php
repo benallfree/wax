@@ -61,7 +61,7 @@ class HamlLexer {
       $tag = array_pop($this->tag_stack);
       if ($tag == "*php_block_end*")
       {
-        $tag = "<? } ?>";
+        $tag = "<?php } ?>";
       }
       echo "$indent$tag\n";
     }
@@ -91,10 +91,10 @@ class HamlLexer {
       {
         if ($is_php && $current_block_level == $this->new_block_level)
         {
-          $tag = "<? } ";
+          $tag = "<?php } ";
           $this->php_open=true;
         } else {
-          $tag = "<? } ?>";
+          $tag = "<?php } ?>";
         }
       }
       echo "$indent$tag\n";
@@ -299,7 +299,7 @@ class HamlLexer {
   function handle_attribute_assign($matches)
   {
     $name = array_shift($matches);
-    echo " $name=\"<?= W::h(";
+    echo " $name=\"<?php echo(W::h(";
     $this->yybegin(self::ATTRIBUTE_VALUE_TOKEN);
     $this->attribute_value_expecting = array('php');
   }
@@ -330,12 +330,12 @@ class HamlLexer {
             break;
           case '}':
             array_pop($this->attribute_value_expecting);
-            echo ") ?>\"";
+            echo ")) ?>\"";
             $this->yybegin(self::COMMAND_CONTENT);
             break;
           case ',':
             array_pop($this->attribute_value_expecting);
-            echo ") ?>\"";
+            echo ")) ?>\"";
             $this->yybegin(self::ATTRIBUTE_START);
             break;
             
@@ -473,7 +473,7 @@ class HamlLexer {
         $this->tag_stack[] = '</style>';
         break;
       case 'php':
-        echo '<?';
+        echo '<?php';
         $this->tag_stack[] = "?>";
         break;
       default:
@@ -555,17 +555,17 @@ class HamlLexer {
     {
       if ($use_echo)
       {
-        echo "<?= ";
+        echo "<? echo(";
         if ($this->php_wrap) echo "W::h(";
       } else {
-        echo "<? ";
+        echo "<?php ";
       }
     }
     echo $php;
     if ($use_echo)
     {
       if ($this->php_wrap) echo ")";
-      echo " ?>";
+      echo ") ?>";
       $this->is_new_line=true;
     } else {
       $this->php_open = true;

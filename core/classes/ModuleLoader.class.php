@@ -1,4 +1,4 @@
-<?
+<?php
 
 class ModuleLoader extends Mixin
 {
@@ -8,7 +8,7 @@ class ModuleLoader extends Mixin
   {
     if(!isset(self::$modules[$module_name]))
     {
-      trigger_error("Wicked Module '{$module_name}' is not loaded.");
+      trigger_error("Wax Module '{$module_name}' is not loaded.");
     }
     return self::$modules[$module_name];
   }
@@ -18,14 +18,14 @@ class ModuleLoader extends Mixin
     if(isset(self::$modules[$module_name] )) return;
     if(!is_array($config_override))
     {
-      trigger_error("Wicked Module '{$module_name}' did not supply an array for custom config.", E_USER_ERROR);
+      trigger_error("Wax Module '{$module_name}' did not supply an array for custom config.", E_USER_ERROR);
     }
     $module_fpath = self::find_module($module_name, $version);
     $parts = pathinfo($module_name);
     $module_name = $parts['filename'];
     if(!$module_fpath) 
     {
-      trigger_error("Wicked Module '{$module_name}' not found.", E_USER_ERROR);
+      trigger_error("Wax Module '{$module_name}' not found.", E_USER_ERROR);
     }
     
     $config_defaults = array(
@@ -38,7 +38,7 @@ class ModuleLoader extends Mixin
     );
     
     // Load the metadata file
-    $config_fpath = $module_fpath."/Wicked";
+    $config_fpath = $module_fpath."/config.php";
     $config = array();
     if(file_exists($config_fpath))
     {
@@ -47,7 +47,7 @@ class ModuleLoader extends Mixin
     $config = array_merge($config, $config_override);
     $config = array_merge($config_defaults, $config);
 
-    $config = W::filter('module_config', $config, $module_name);
+    $config = apply_filters('wax_module_config', $config, $module_name);
     self::$modules[$module_name] = &$config;
 
 
@@ -70,30 +70,30 @@ class ModuleLoader extends Mixin
       }
       if(!self::find_module($req_name, $req_version))
       {
-        W::error("Module $module_name requires $req_name, but $req_name does not exist.");
+        trigger_error("Module $module_name requires $req_name, but $req_name does not exist.", E_USER_ERROR);
       }
       self::load($req_name, array(), $req_version);
     }
     
     // Module loader
-    W::action('before_module_loaded', $module_name, $config);
+    do_action('wax_before_module_loaded', $module_name, $config);
     $load_fpath = $module_fpath."/load.php";
     if(file_exists($load_fpath))
     {
       require($load_fpath);
     }
-    W::action('after_module_loaded', $module_name, $config);
+    do_action('wax_after_module_loaded', $module_name, $config);
     
   }
   
   private static function find_module($module_name, $desired_version = null)
   {
     if(file_exists($module_name)) return $module_name; // If file path is passed, just return it
-    $paths = explode(PATH_SEPARATOR, get_include_path());
+    $paths = apply_filters('wax_module_load_search_paths', array());
     $latest_version_int = 0;
     foreach($paths as $path)
     {
-      $module_glob = $path."/wicked/{$module_name}*";
+      $module_glob = $path."/{$module_name}*";
       $files = glob($module_glob, GLOB_ONLYDIR);
       if(!$files) continue;
       foreach($files as $file)

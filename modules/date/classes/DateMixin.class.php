@@ -76,6 +76,11 @@ class DateMixin extends Mixin
     return $parts['year'] < $today_parts['year'] || ($parts['year'] == $today_parts['year'] && $parts['yday'] < $today_parts['yday']);
   }
   
+  static function number_format($n, $decimals=0)
+  {
+    return number_format_i18n($n, $decimals);
+  }
+  
   static function is_future($dt)
   {
     return !is_today($dt) && !is_past($dt);
@@ -90,20 +95,15 @@ class DateMixin extends Mixin
   
   static function date_format($timestamp, $include_time=false)
   {
-    if (!$timestamp) return null;
-    $config = W::module('date');
-    $s = $config['date_format'];
-    if($include_time) $s .= " @ {$config['time_format']}";
+    return date_i18n(get_option('date_format') ,$timestamp);
+    if($include_time) $s .= date_i18n(get_option('time_format') ,$timestamp);
     return date($s, $timestamp);
   }
   
   static function time_format($timestamp, $include_date = false)
   {
-    if (!$timestamp) return null;
-    $config = W::module('date');
-    $s = $config['time_format'];
-    if($include_date) $s = "{$config['date_format']} @ " . $s;
-    return date($s, $timestamp);
+    if($include_date) return self::date_format($timestamp, true);
+    return date_i18n(get_option('time_format') ,$timestamp);
   }
   
   static function beginning_of_week($dt=null)
