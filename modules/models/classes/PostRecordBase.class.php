@@ -244,6 +244,8 @@ class PostRecordBase
     {
       if(is_string($v)) // Assume name if string
       {
+        unset($fields[$k]);
+        $k = $v;
         $v = array('name'=>$v);
       }
       $defaults = array(

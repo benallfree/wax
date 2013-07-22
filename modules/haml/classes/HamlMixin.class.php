@@ -15,7 +15,6 @@ class HamlMixin extends Mixin
   {
     $php = self::to_php($haml);
     $out = W::php_sandbox_string($php,$data,$capture);
-    dprint($out,true);
     return $out;
   }
   
