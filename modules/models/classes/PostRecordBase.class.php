@@ -399,18 +399,21 @@ class PostRecordBase
     return $this->is_valid;
   }
   
-  function to_json()
+  function to_array()
   {
-    $data = array(
-      'errors'=>$this->errors,
-      'fields'=>array(),
-    );
-    foreach($this->_fields as $k=>$info)
+    $fields_include = func_get_args();
+    $data = array();
+    if(!$fields_include) $fields_include = array_keys($this->_fields);
+    foreach($fields_include as $field_name)
     {
-      $mapped_name = $info['name'];
-      $data['fields'][$mapped_name] = $this->$mapped_name;
+      $data[$field_name] = $this->$field_name;
     }
-    return json_encode(apply_filters("{$this->_object_type}_to_json", $data));
+    return apply_filters("{$this->_object_type}_to_array", $data);
+  }
+
+  function to_json($fields_include = array())
+  {
+    return json_encode(apply_filters("{$this->_object_type}_to_json", $this->to_array($fields_include)));
   }
   
   function __get($name)
