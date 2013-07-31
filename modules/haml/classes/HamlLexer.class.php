@@ -177,7 +177,7 @@ class HamlLexer {
         return true;
         break;
       case "\t":
-        W::error("HAML error: You have a TAB where you shouldn't ({$this->new_block_level}). Check for tabs masquerading as invisible spaces. On line {$this->line} around " . trim(substr($this->data, $this->counter, 20)), $this->data);
+        trigger_error("HAML error: You have a TAB where you shouldn't ({$this->new_block_level}). Check for tabs masquerading as invisible spaces. On line {$this->line} around " . trim(substr($this->data, $this->counter, 20)));
       default:
         $this->indent();
         $this->yybegin(self::TEXT_LINE);
@@ -436,7 +436,7 @@ class HamlLexer {
   {
     $indent = array_shift($matches);
     $this->new_block_level = strlen($indent)/2;
-    if ($this->new_block_level > count($this->tag_stack)+1) W::error("HAML error: You have indentation where you shouldn't ({$this->new_block_level}). Check for blank lines with indentation. On line {$this->line} around " . trim(substr($this->data, $this->counter, 20)), $this->data);
+    if ($this->new_block_level > count($this->tag_stack)+1) trigger_error("HAML error: You have indentation where you shouldn't ({$this->new_block_level}). Check for blank lines with indentation. On line {$this->line} around " . trim(substr($this->data, $this->counter, 20)));
     $this->is_new_line=false;
     $this->yybegin(self::COMMAND_START);
   }
