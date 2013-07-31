@@ -19,6 +19,7 @@ class PostRecordBase
       );
     }
     $query = array(
+      'suppress_filters'=>false,
       'post_type'=>static::type(),
       'post_status'=>'any',
       'numberposts'=>1,
@@ -53,13 +54,14 @@ class PostRecordBase
 
   static function find_all($data=array())
   {
-    $query = array(
+    $defaults = array(
       'post_type'=>static::type(),
       'post_status'=>'any',
       'numberposts'=>0,
+      'suppress_filters'=>false,
     );
-    $query = array_merge($data, $query);
-    if($query['meta_query'])
+    $query = array_merge($data, $defaults);
+    if(isset($query['meta_query']))
     {
       $query['meta_query'] = self::fix_data($query['meta_query']);
     }

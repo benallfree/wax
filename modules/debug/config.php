@@ -1,4 +1,4 @@
-<?
+<?php
 $config = array(
   'format'=>'1.0.0',
   'enabled'=>true,
