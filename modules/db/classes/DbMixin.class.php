@@ -94,9 +94,12 @@ class DbMixin extends Mixin
     return $dbh;
   }
   
-  static function interpolate()
+  static function interpolate($args)
   {
-    $args = func_get_args();
+    if(!is_array($args))
+    {
+      $args = func_get_args();
+    }
     $sql = array_shift($args);
     $s = '';
     $in_quote = false;
@@ -118,24 +121,33 @@ class DbMixin extends Mixin
       if($c == "'" && !$in_quote)
       {
         $in_quote = true;
+        $s.=$c;
         continue;
       }
       if($c == "'" && $in_quote)
       {
         $next = substr($sql, $i+1, 1);
-        if($next == "'") continue;
+        if($next != "'")
+        {
+          $in_quote = false;
+          $s.=$c;
+          continue;
+        }
       }
       if($c == '\\')
       {
+        $s .= $c;
         $in_escape = true;
+        continue;
+      }
+      if($in_quote)
+      {
+        $s .= $c;
         continue;
       }
       $in_quote = false;
       switch($c)
       {
-        case "'":
-         $in_quote = true;
-         break;
         case '?':
           $s .= "'".mysql_real_escape_string(array_shift($args))."'";
           break;
@@ -152,6 +164,7 @@ class DbMixin extends Mixin
     $sql = $s;
     
     $sql = trim($sql);  
+    
     return $sql;
   }
   

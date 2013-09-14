@@ -4,7 +4,6 @@ class UrlMixin extends Mixin
 {
   static $__prefix = 'url';
   
-  
   function multiRequest($data, $options = array()) {
     // http://www.phpied.com/simultaneuos-http-requests-in-php-with-curl/
     // array of curl handles

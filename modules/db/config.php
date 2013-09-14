@@ -21,4 +21,5 @@ $config = array(
   'connections'=>array(),
   'connection_stack'=>array(),
   'current'=>array(),
+  'debug'=>false,
 );

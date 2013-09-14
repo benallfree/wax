@@ -4,13 +4,14 @@ class PostRecordBase
   static $type_info = array();
   static $loaded = array();
   static $in_save=0;
+  static $params = array();
   
   static function type()
   {
     return W::singularize(W::tableize(get_called_class()));
   }
   
-  static function find($data=array())
+  static function find($params=array())
   {
     if(is_numeric($data)) // Assume it is a post ID
     {
@@ -24,7 +25,7 @@ class PostRecordBase
       'post_status'=>'any',
       'numberposts'=>1,
     );
-    $query = array_merge($data, $query);
+    $query = array_merge($query, $data);
     if(isset($query['meta_query']))
     {
       $query['meta_query'] = self::fix_data($query['meta_query']);
@@ -34,6 +35,73 @@ class PostRecordBase
     if(count($objs)==0) return null;
     $c = get_called_class();
     return new $c($objs[0]);
+  }
+  
+  static function find_all($params=array())
+  {
+    $params = self::fix_params($params);
+    
+    self::$params = $params;
+    
+    add_filter( 'posts_where', array('PostRecordBase', 'filter_where'));
+    add_filter( 'posts_join', array('PostRecordBase', 'filter_join'));
+    add_filter( 'posts_orderby', array('PostRecordBase', 'filter_orderby'));
+    $objects = get_posts($params['query']);
+    remove_filter( 'posts_where', array('PostRecordBase', 'filter_where'));
+    remove_filter( 'posts_join', array('PostRecordBase', 'filter_join'));
+    remove_filter( 'posts_orderby', array('PostRecordBase', 'filter_orderby'));
+    
+    $ret = array();
+    $c = get_called_class();
+    foreach($objects as $l)
+    {
+      $nl = new $c($l);
+      $ret[] = $nl;
+    }
+    return $ret;
+  }
+  
+  static function fix_params($params)
+  {
+    global $wpdb;
+
+    $defaults = array(
+      'query'=>array(),
+      'conditions'=>array(),
+      'order'=>'',
+      'joins'=>array(),
+    );
+    $params = array_merge($defaults, $params);
+
+    $type_info = self::info();
+    $meta_count = 1;
+    foreach($type_info['fields'] as $mapped_name=>$info)
+    {
+      $search = sprintf('/(^|\W)(`?%s`?)($|\W)/', preg_quote($mapped_name));
+      $join_name = "t_{$mapped_name}";
+      $params['conditions'][0] = preg_replace($search, "\\1`{$join_name}`.`meta_value`\\3", $params['conditions'][0], -1, $where_count);
+      $params['order'] = preg_replace($search, "\\1`{$join_name}`.`meta_value`\\3", $params['order'], -1, $order_count);
+      if($where_count>0 || $order_count>0)
+      {
+        $params['joins'][] = "left outer join `{$wpdb->postmeta}` `{$join_name}` on `{$join_name}`.`post_id` = `{$wpdb->posts}`.`ID` and `{$join_name}`.`meta_key` = '{$info['real_name']}'";
+      }
+    }
+    $params['conditions'] = W::db_interpolate($params['conditions']);
+    
+    $defaults = array(
+      'post_type'=>static::type(),
+      'post_status'=>'publish',
+      'suppress_filters'=>false,
+      'nopaging'=>true,
+    );
+    $params['query'] = array_merge($defaults, $params['query']);
+
+    if(isset($params['query']['meta_query']))
+    {
+      $params['query']['meta_query'] = self::fix_data($params['query']['meta_query']);
+    }
+
+    return $params;    
   }
   
   static function fix_data($data)
@@ -51,29 +119,24 @@ class PostRecordBase
     }
     return $ret;
   }
-
-  static function find_all($data=array())
+  
+  
+  function filter_orderby($orderby)
   {
-    $defaults = array(
-      'post_type'=>static::type(),
-      'post_status'=>'any',
-      'numberposts'=>0,
-      'suppress_filters'=>false,
-    );
-    $query = array_merge($data, $defaults);
-    if(isset($query['meta_query']))
-    {
-      $query['meta_query'] = self::fix_data($query['meta_query']);
-    }
-    $objects = get_posts($query);
-    $ret = array();
-    $c = get_called_class();
-    foreach($objects as $l)
-    {
-      $nl = new $c($l);
-      $ret[] = $nl;
-    }
-    return $ret;
+    $orderby = self::$params['order'];
+    return $orderby;
+  }
+
+  function filter_where($where)
+  {
+    $where .= ' and ' . self::$params['conditions'];
+    return $where;
+  }
+
+  function filter_join($join)
+  {
+    $join .= ' '. join(' ', self::$params['joins']);
+    return $join;
   }
   
   function permalink()
@@ -167,10 +230,9 @@ class PostRecordBase
   function copy()
   {
     $data = array();
-    foreach($this->_fields as $k=>$field_info)
+    foreach($this->_fields as $mapped_name=>$field_info)
     {
       if(!$field_info['should_copy']) continue;
-      $mapped_name = $field_info['name'];
       $data[$mapped_name] = $this->$mapped_name;
     }
     $class = get_called_class();
@@ -180,6 +242,7 @@ class PostRecordBase
   function deserialize_date($obj, $v) 
   {
     $dt = date_create_from_format('Y-m-d H:i:s', $v);
+    if(!$dt) dprint($dt,true);
     return $dt->format('U');
   }
   
@@ -215,26 +278,11 @@ class PostRecordBase
 
     do_action("wp_models_{$this->_object_type}_before_load", $this);
 
+    $this->_originals = array();
     $this->load($data);
 
     $data = (object)$data;
-    // Initialize defaults and store original values
-    $this->_originals = array();
-    foreach($this->_fields as $k=>$info)
-    {
-      $mapped_name = $info['name'];
-      $v = $info['default'];
-      if(!isset($this->$mapped_name))
-      {
-        $this->$mapped_name = $v;
-        if(isset($data->$mapped_name))
-        {
-          $this->$mapped_name = $data->$mapped_name;  
-        }
-      }
-      $this->_originals[$mapped_name] = $this->$mapped_name;
-    }
-    
+
     $this->migrate();
     do_action("wp_models_{$this->_object_type}_after_load", $this);
   }
@@ -242,21 +290,21 @@ class PostRecordBase
   static function fixup(&$fields)
   {
     
-    foreach($fields as $k=>$v)
+    foreach($fields as $mapped_name=>$v)
     {
       if(is_string($v)) // Assume name if string
       {
-        unset($fields[$k]);
-        $k = $v;
-        $v = array('name'=>$v);
+        unset($fields[$mapped_name]);
+        $mapped_name = $v;
+        $v = array('real_name'=>$mapped_name);
       }
       $defaults = array(
-        'name'=>$k,
+        'real_name'=>$mapped_name,
         'default'=>null,
         'should_copy'=>true,
         'required'=>false,
       );
-      $fields[$k] = array_merge($defaults, $v);
+      $fields[$mapped_name] = array_merge($defaults, $v);
     }
   }
   
@@ -313,40 +361,48 @@ class PostRecordBase
     }
   }
   
+  function find_mapped_name($real_name)
+  {
+    foreach($this->_fields as $mapped_name=>$info)
+    {
+      if($info['real_name']==$real_name) return $mapped_name;
+    }
+    return null;
+  }
+  
   function load_object($data)
   {
-    foreach($data as $k=>$v)
+    foreach($data as $real_name=>$v)
     {
-      $name = $k;
-      if(isset($this->_fields[$k]))
+      $this->init_field($real_name, $v);
+    }
+  }
+  
+  function init_mapped_field($mapped_name, $raw_value=null)
+  {
+    if($raw_value===null) $raw_value = $this->_fields[$mapped_name]['default'];
+    $raw_value=trim($raw_value);
+    $this->$mapped_name = $raw_value;
+    if(isset($this->_fields[$mapped_name]['deserialize']))
+    {
+      $f = $this->_fields[$mapped_name]['deserialize'];
+      if(is_callable($f))
       {
-        $name = $this->_fields[$k]['name'];
-      }
-      $this->$name = $v;
-      if(isset($this->_fields[$k]['deserialize']))
-      {
-        $f = $this->_fields[$k]['deserialize'];
-        if(is_callable($f))
-        {
-          $this->$name = $f($this, $v);
-        } else {
-          $this->$name = call_user_func($f,$this, $v);
-        }
+        $this->$mapped_name = $f($this, $this->$mapped_name);
+      } else {
+        $this->$mapped_name = call_user_func($f,$this, $this->$mapped_name);
       }
     }
-    $meta = get_post_meta($this->ID, null);
-    if($meta)
-    {
-      foreach($this->_meta_fields as $k=>$info)
-      {
-        $mapped_name = $info['name'];
-        $this->$mapped_name = $info['default'];
-        if(isset($meta[$k]))
-        {
-          $this->$mapped_name = $meta[$k][0];
-        }
-      }
-    }
+    $this->_originals[$mapped_name] = $this->$mapped_name;
+    
+    return $this->$mapped_name;
+  }
+  
+  function init_field($real_name, $raw_value)
+  {
+    $mapped_name = $this->find_mapped_name($real_name);
+    if(!$mapped_name) return null;
+    return $this->init_mapped_field($mapped_name, $raw_value);
   }
   
   function save()
@@ -363,10 +419,10 @@ class PostRecordBase
     }
     do_action("wp_models_{$this->_object_type}_before_save", $this);
     $post = array();
-    foreach($this->_core_fields as $k=>$info)
+    foreach($this->_core_fields as $mapped_name=>$info)
     {
-      $mapped_name = $info['name'];
-      $post[$k] = $this->$mapped_name;
+      $real_name = $info['real_name'];
+      $post[$real_name] = $this->$mapped_name;
     }
     $this->ID = wp_insert_post($post); // insert or update - this function does both
     if(!$this->ID) 
@@ -374,10 +430,12 @@ class PostRecordBase
       $this->errors[] = new RecordError("Post failed");
       return false;
     }
-    foreach($this->_meta_fields as $field_name=>$field_info)
+    foreach($this->_meta_fields as $mapped_name=>$field_info)
     {
-      $mapped_name = $field_info['name'];
-      update_post_meta($this->ID, $mapped_name, $this->$field_name);
+      if(!isset($this->_originals[$mapped_name])) continue; // not loaded
+      $real_name = $field_info['real_name'];
+      if($this->$mapped_name == $this->_originals[$mapped_name]) continue; // not dirty
+      update_post_meta($this->ID, $real_name, $this->$mapped_name);
     }
     do_action("wp_models_{$this->_object_type}_after_save", $this);
     self::$in_save--;
@@ -387,9 +445,8 @@ class PostRecordBase
   function validate()
   {
     $this->errors = array();
-    foreach($this->_fields as $k=>$info)
+    foreach($this->_fields as $mapped_name=>$info)
     {
-      $mapped_name = $info['name'];
       $this->$mapped_name = trim($this->$mapped_name);
     }
     do_action("wp_models_{$this->_object_type}_before_validate", $this);
@@ -420,6 +477,18 @@ class PostRecordBase
   
   function __get($name)
   {
+    if($this->ID)
+    {
+      foreach($this->_meta_fields as $mapped_name=>$info)
+      {
+        if($mapped_name==$name)
+        {
+          $v = get_post_meta($this->ID, $info['real_name'], true);
+          return $this->init_mapped_field($mapped_name, $v);
+        }
+      }
+    }
+        
     if(!method_exists($this,$name))
     {
       trigger_error("Unknown getter: {$name}.");

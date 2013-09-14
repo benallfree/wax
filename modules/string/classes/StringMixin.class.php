@@ -68,9 +68,19 @@ class StringMixin extends Mixin
     return urlencode($s);
   }
   
+  static function ue($s)
+  {
+    echo self::u($s);
+  }
+  
   static function h($s)
   {
     return htmlentities($s, ENT_COMPAT, 'UTF-8');
+  }
+  
+  static function he($s)
+  {
+    echo self::h($s);
   }
   
   static function j($s, $quote=false)
@@ -80,5 +90,10 @@ class StringMixin extends Mixin
     $s = preg_replace("/\n/", "\\n", $s);
     if($quote) $s = "'".$s."'";
     return $s;
+  }
+  
+  static function je($s, $quote=false)
+  {
+    self::he(self::j($s, $quote));
   }
 }
