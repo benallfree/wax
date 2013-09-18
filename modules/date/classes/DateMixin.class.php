@@ -172,6 +172,11 @@ class DateMixin extends Mixin
     return mktime(23,59,59,$parts['mon'], $parts['mday'], $parts['year']);
   }
   
+  static function next_business_day($dt)
+  {
+    return self::business_days_later($dt, 1);
+  }
+  
   static function business_days_later($dt, $days)
   {
     while($days>0)
