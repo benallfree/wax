@@ -157,7 +157,6 @@ class DateMixin extends Mixin
     return $dt;
   }
   
-  
   static function beginning_of_day($dt=null)
   {
     if(!$dt) $dt=time();
